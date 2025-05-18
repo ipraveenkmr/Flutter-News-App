@@ -3,11 +3,11 @@ import 'news_screen.dart'; // Make sure this path matches where NewsScreen is lo
 
 class NewsCategoriesPage extends StatelessWidget {
   final List<Map<String, dynamic>> categories = [
-    {'title': 'Top Stories', 'color': Colors.redAccent},
     {'title': 'World', 'color': Colors.blueAccent},
-    {'title': 'Business', 'color': Colors.green},
     {'title': 'Technology', 'color': Colors.deepPurple},
+    {'title': 'Business', 'color': Colors.green},
     {'title': 'Entertainment', 'color': Colors.orange},
+    {'title': 'Nation', 'color': Colors.yellow[700]},
     {'title': 'Sports', 'color': Colors.teal},
     {'title': 'Science', 'color': Colors.indigo},
     {'title': 'Health', 'color': Colors.pinkAccent},

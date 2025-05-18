@@ -132,10 +132,17 @@ class _NewsScreenState extends State<NewsScreen> {
 }
 
 Future<List<NewsItem>> fetchGoogleNewsRSS(String topic) async {
+  // Convert topic to uppercase and encode for URL
+  final encodedTopic = Uri.encodeComponent(topic.toUpperCase());
+
   final rssUrl =
-      'https://news.google.com/rss/search?q=${Uri.encodeComponent(topic)}&hl=en-IN&gl=IN&ceid=IN:en';
+      'https://news.google.com/news/rss/headlines/section/topic/$encodedTopic';
+
+  print('RSS Feed URL: $rssUrl');
 
   final response = await http.get(Uri.parse(rssUrl));
+  print('HTTP Response status: ${response.statusCode}');
+
   if (response.statusCode != 200) {
     throw Exception('Failed to load news');
   }
@@ -143,7 +150,7 @@ Future<List<NewsItem>> fetchGoogleNewsRSS(String topic) async {
   final document = XmlDocument.parse(response.body);
   final items = document.findAllElements('item');
 
-  // Fetch multiple images for the topic from Pexels
+  // Fetch images for the topic
   final imageUrls = await fetchPexelsImages(topic, 10);
 
   int index = 0;
@@ -152,9 +159,13 @@ Future<List<NewsItem>> fetchGoogleNewsRSS(String topic) async {
     final link = node.getElement('link')?.text ?? '';
     final pubDate = node.getElement('pubDate')?.text ?? '';
     final description = node.getElement('description')?.text ?? '';
-    final plainTextDescription = description.replaceAll(RegExp(r'<[^>]*>'), '').trim();
 
-    // Assign images cycling through the list if there are fewer images than news items
+    // Remove HTML tags and clean up text
+    final plainTextDescription = description
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .replaceAll(RegExp(r'&nbsp;'), ' ')
+        .trim();
+
     final imageUrl = imageUrls.isNotEmpty
         ? imageUrls[index++ % imageUrls.length]
         : 'https://via.placeholder.com/600x400?text=${Uri.encodeComponent(topic)}';
