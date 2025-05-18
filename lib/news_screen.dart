@@ -1,10 +1,9 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
-
+import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 
 class NewsItem {
   final String title;
@@ -40,8 +39,21 @@ class _NewsScreenState extends State<NewsScreen> {
     _newsFuture = fetchGoogleNewsRSS(widget.topic);
   }
 
+  void _launchURL(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch URL')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
       appBar: AppBar(title: Text('${widget.topic} News')),
       body: FutureBuilder<List<NewsItem>>(
@@ -54,89 +66,82 @@ class _NewsScreenState extends State<NewsScreen> {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          final newsItems = snapshot.data!;
-          return ListView.builder(
-            itemCount: newsItems.length,
-            itemBuilder: (context, index) {
-              final item = newsItems[index];
+          final newsItems = snapshot.data;
+          if (newsItems == null || newsItems.isEmpty) {
+            return const Center(child: Text('No news available.'));
+          }
+
+          return CardSwiper(
+            cards: newsItems.map((item) {
               return GestureDetector(
                 onTap: () => _launchURL(item.link),
                 child: Card(
-                  margin: const EdgeInsets.all(10),
+                  elevation: 8,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  elevation: 4,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (item.imageUrl.isNotEmpty)
                         ClipRRect(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                           child: Image.network(
                             item.imageUrl,
-                            height: 180,
+                            height: MediaQuery.of(context).size.height * 0.4,
                             width: double.infinity,
                             fit: BoxFit.cover,
                           ),
                         ),
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.title,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.title,
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              item.description,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.black87),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              item.pubDate,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
+                              const SizedBox(height: 12),
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  child: Text(
+                                    item.description,
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 12),
+                              Text(
+                                item.pubDate,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
               );
-            },
+            }).toList(),
           );
+
         },
       ),
     );
   }
-
-  void _launchURL(String url) async {
-    final uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not launch URL')),
-      );
-    }
-  }
 }
 
 Future<List<NewsItem>> fetchGoogleNewsRSS(String topic) async {
-  // Convert topic to uppercase and encode for URL
   final encodedTopic = Uri.encodeComponent(topic.toUpperCase());
-
-  final rssUrl =
-      'https://news.google.com/news/rss/headlines/section/topic/$encodedTopic';
+  final rssUrl = 'https://news.google.com/news/rss/headlines/section/topic/$encodedTopic';
 
   print('RSS Feed URL: $rssUrl');
 
@@ -150,7 +155,6 @@ Future<List<NewsItem>> fetchGoogleNewsRSS(String topic) async {
   final document = XmlDocument.parse(response.body);
   final items = document.findAllElements('item');
 
-  // Fetch images for the topic
   final imageUrls = await fetchPexelsImages(topic, 10);
 
   int index = 0;
@@ -160,11 +164,12 @@ Future<List<NewsItem>> fetchGoogleNewsRSS(String topic) async {
     final pubDate = node.getElement('pubDate')?.text ?? '';
     final description = node.getElement('description')?.text ?? '';
 
-    // Remove HTML tags and clean up text
     final plainTextDescription = description
         .replaceAll(RegExp(r'<[^>]*>'), '')
         .replaceAll(RegExp(r'&nbsp;'), ' ')
         .trim();
+
+    print('Parsed description: $plainTextDescription');
 
     final imageUrl = imageUrls.isNotEmpty
         ? imageUrls[index++ % imageUrls.length]
@@ -181,7 +186,7 @@ Future<List<NewsItem>> fetchGoogleNewsRSS(String topic) async {
 }
 
 Future<List<String>> fetchPexelsImages(String topic, int maxImages) async {
-  const apiKey = '7N4slirDGG9JOzfU5xWlHHujbLyAZVOsTBMP5QbmljBRwIJdfa6rLTgU'; // Your API key
+  const apiKey = '7N4slirDGG9JOzfU5xWlHHujbLyAZVOsTBMP5QbmljBRwIJdfa6rLTgU'; // Replace for production use
   final url =
       'https://api.pexels.com/v1/search?query=${Uri.encodeComponent(topic)}&per_page=$maxImages';
 
@@ -194,14 +199,9 @@ Future<List<String>> fetchPexelsImages(String topic, int maxImages) async {
     final data = jsonDecode(response.body);
     final photos = data['photos'];
     if (photos != null && photos.isNotEmpty) {
-      // Extract the medium image URLs
       return List<String>.from(photos.map((photo) => photo['src']['medium']));
     }
   }
 
-  // Return empty list if failed, fallback handled later
   return [];
 }
-
-
-
