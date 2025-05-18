@@ -87,7 +87,7 @@ class _NewsScreenState extends State<NewsScreen> {
                           borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                           child: Image.network(
                             item.imageUrl,
-                            height: MediaQuery.of(context).size.height * 0.4,
+                            height: MediaQuery.of(context).size.height * 0.35,
                             width: double.infinity,
                             fit: BoxFit.cover,
                           ),
@@ -101,7 +101,7 @@ class _NewsScreenState extends State<NewsScreen> {
                               Text(
                                 item.title,
                                 style: const TextStyle(
-                                  fontSize: 22,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -110,7 +110,7 @@ class _NewsScreenState extends State<NewsScreen> {
                                 child: SingleChildScrollView(
                                   child: Text(
                                     item.description,
-                                    style: const TextStyle(fontSize: 16),
+                                    style: const TextStyle(fontSize: 15),
                                   ),
                                 ),
                               ),
@@ -140,8 +140,11 @@ class _NewsScreenState extends State<NewsScreen> {
 }
 
 Future<List<NewsItem>> fetchGoogleNewsRSS(String topic) async {
+  // Convert topic to uppercase and encode for URL
   final encodedTopic = Uri.encodeComponent(topic.toUpperCase());
-  final rssUrl = 'https://news.google.com/news/rss/headlines/section/topic/$encodedTopic';
+
+  final rssUrl =
+      'https://news.google.com/news/rss/headlines/section/topic/$encodedTopic';
 
   print('RSS Feed URL: $rssUrl');
 
@@ -155,6 +158,7 @@ Future<List<NewsItem>> fetchGoogleNewsRSS(String topic) async {
   final document = XmlDocument.parse(response.body);
   final items = document.findAllElements('item');
 
+  // Fetch images for the topic
   final imageUrls = await fetchPexelsImages(topic, 10);
 
   int index = 0;
@@ -164,12 +168,11 @@ Future<List<NewsItem>> fetchGoogleNewsRSS(String topic) async {
     final pubDate = node.getElement('pubDate')?.text ?? '';
     final description = node.getElement('description')?.text ?? '';
 
+    // Remove HTML tags and clean up text
     final plainTextDescription = description
         .replaceAll(RegExp(r'<[^>]*>'), '')
         .replaceAll(RegExp(r'&nbsp;'), ' ')
         .trim();
-
-    print('Parsed description: $plainTextDescription');
 
     final imageUrl = imageUrls.isNotEmpty
         ? imageUrls[index++ % imageUrls.length]
@@ -185,8 +188,9 @@ Future<List<NewsItem>> fetchGoogleNewsRSS(String topic) async {
   }).toList();
 }
 
+
 Future<List<String>> fetchPexelsImages(String topic, int maxImages) async {
-  const apiKey = '7N4slirDGG9JOzfU5xWlHHujbLyAZVOsTBMP5QbmljBRwIJdfa6rLTgU'; // Replace for production use
+  const apiKey = 'xWlHHujbLyAZVOsTBMP5Qb'; // Replace for production use
   final url =
       'https://api.pexels.com/v1/search?query=${Uri.encodeComponent(topic)}&per_page=$maxImages';
 

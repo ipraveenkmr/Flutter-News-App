@@ -1,0 +1,2 @@
+D:/App/2025/news/android/app/.cxx/RelWithDebInfo/3l2a3r3e/armeabi-v7a/CMakeFiles/edit_cache.dir
+D:/App/2025/news/android/app/.cxx/RelWithDebInfo/3l2a3r3e/armeabi-v7a/CMakeFiles/rebuild_cache.dir
